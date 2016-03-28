@@ -50,6 +50,7 @@
     <Compile Include="GameOver.cs" />
     <Compile Include="Intro.cs" />
     <Compile Include="MapSize.cs" />
+    <Compile Include="Ping.cs" />
     <Compile Include="PlayerCoords.cs" />
     <Compile Include="PlayerDisconnect.cs" />
     <Compile Include="PlayerForGamedata.cs" />

@@ -48,14 +48,11 @@ namespace Server29._10
             players = new Dictionary<string, Player>();           
             playersAndCoords = new List<VisiblePlayers.Player>();
             mapObjects = new List<VisibleObjects.MapObject>();
-            rand = new Random();            
-<<<<<<< HEAD
+            rand = new Random();         
             timeOfEndingPhaseWaiting = DateTime.Now.AddSeconds(60);
             timeOfEndingPhaseGame = DateTime.Now.AddSeconds(120);
-=======
             timeOfEndingPhaseWaiting = DateTime.Now.AddSeconds(40);
             timeOfEndingPhaseGame = DateTime.Now.AddSeconds(50);
->>>>>>> 2eac0e9a599abe3d595c7af7cfdde125fcbf7f70
             timeOfEndingPhaseResult = DateTime.Now.AddSeconds(60);
             ReadLabyrinth("labyrinth1.txt");
             phaseOfGame = phase.waiting;

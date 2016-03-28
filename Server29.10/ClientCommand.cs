@@ -41,7 +41,8 @@ namespace Server29._10
             counterOfReceivedCommand = 0;
             counterOfSentCommand = 0;
             EventHandlersListForClientCommand += new ClientSocketActionEventHandlerForClientCommand(ReceiveNewCommand);
-        }   
+        }
+         
         public void ReceiveNewCommand()
         {
             string messageFromClientSocket;

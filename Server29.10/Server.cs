@@ -59,26 +59,17 @@ namespace Server29._10
                         if (flag)
                         {
                             answer = new Response("ok", "welcome, " + command.Name);
-                            listOfPlayersAndTheirNickname.Add(client.ID, command.Name);
-                            //clients[client.ID].CurrentStatus = status.on;
+                            listOfPlayersAndTheirNickname[client.ID] = command.Name;
+                            //listOfPlayersAndTheirNickname.Add(client.ID, command.Name);
                             dataOfThisGame.AddNewPlayer(command.Name);
-
 
                             client.SendNewCommand(answer as BaseCommand);
                             client.SendNewCommand(dataOfThisGame.FormCommandOfTimeLeft() as BaseCommand);
 
                             foreach (var item in clients)
                             {
-                                
+                                item.Value.SendNewCommand(dataOfThisGame.FormCommandOfPlayersList() as BaseCommand);
                             }
-                            for (int i = 1; i < ClientCommand.MaxID; i++)
-                            {
-                                if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
-                                {
-                                    clients[i].SendNewCommand(dataOfThisGame.FormCommandOfPlayersList() as BaseCommand);
-                                }
-                            }
-
                         }
 
                         break;
@@ -194,13 +185,10 @@ namespace Server29._10
                         if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
                         {
                             clients[i].SendNewCommand(dataOfThisGame.FormCommandOfMapSize() as BaseCommand);
-                            //Console.WriteLine(i + "  клиент получил сообщение1 " + DateTime.Now);
-                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfPlayerCoords(listOfPlayersAndTheirNickname[i]) as BaseCommand);
-                            //Console.WriteLine(i + "  клиент получил сообщение2 " + DateTime.Now);
-                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfVisibleObjects(listOfPlayersAndTheirNickname[i]) as BaseCommand);
-                            //Console.WriteLine(i + "  клиент получил сообщение3 " + DateTime.Now);
+                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfPlayerCoords(listOfPlayersAndTheirNickname[i]) as BaseCommand);                         
+                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfVisibleObjects(listOfPlayersAndTheirNickname[i]) as BaseCommand);                            
                             clients[i].SendNewCommand(dataOfThisGame.FormCommandOfVisiblePlayers(listOfPlayersAndTheirNickname[i]) as BaseCommand);
-                            //Console.WriteLine(i + "  клиент получил сообщение4 " + DateTime.Now);
+                           
                         }
                     }
                     WhetherDataIsSentToStartGame = true;
@@ -224,7 +212,6 @@ namespace Server29._10
                 if (DateTime.Now > dataOfThisGame.TimeOfEndingPhaseResult)
                 {
                     FinalizationWorkingServer();
-                    //InitializationServer();
                 }
             }
         }
@@ -236,7 +223,6 @@ namespace Server29._10
                 if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
                 {
                     clients[i].SendNewCommand(tl);
-                    //Console.WriteLine(i + " клиент уровень 1 - время");
                 }               
             } 
         }
@@ -263,8 +249,11 @@ namespace Server29._10
         }
         public void UpdateQueueOfCommands(ClientCommand client)
         {
-            
-            queueOfCommands = client.ReceiveLastCommands();
+            Queue<BaseCommand> que = client.ReceiveLastCommands();
+            while (que.Count > 0)
+            {
+                queueOfCommands.Enqueue(que.Dequeue());
+            }
         }
         public void AddNewClientCommand()
         {
