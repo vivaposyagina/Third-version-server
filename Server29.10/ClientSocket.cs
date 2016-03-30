@@ -14,31 +14,32 @@ namespace Server29._10
     class ClientSocket
     {
         public delegate void ClientSocketActionEventHandlerForClientCommand();
-        //public delegate void ClientSocketActionEventHandlerForServer(ClientCommand client);
+        const int MAX_BUFFER_SIZE = 1000;
+        Thread workerThread;
         protected TcpClient tcp;
         byte[] buffer;
         NetworkStream stream;
-        int length = 0;        
-        protected status currentStatus = status.off;
-        public status CurrentStatus
-        { 
-            get {return currentStatus;}
-            set { currentStatus = value; }
-        }
-        public event ClientSocketActionEventHandlerForClientCommand EventHandlersListForClientCommand;
-        //public event ClientSocketActionEventHandlerForServer ClientSocketActionEventHandlerForServerForDisconnected;
-
-        public void StartToWaitMessage()
-        {
-            Thread th = new Thread(MessageReceiver);
-            th.Start();
-        }
+        int length = 0;
+        protected status currentStatus = status.off;        
+        public event ClientSocketActionEventHandlerForClientCommand EventHandlersListForClientCommand;        
         public ClientSocket(TcpClient client)
         {
-            tcp = client;            
-            buffer = new byte[1000];
+            tcp = client;
+            tcp.NoDelay = true;
             stream = tcp.GetStream();
-            StartToWaitMessage();
+            currentStatus = status.on;
+            buffer = new byte[MAX_BUFFER_SIZE];
+            workerThread = new Thread(new ThreadStart(MessageReceiver));
+            workerThread.Start();
+        }
+        ~ClientSocket()
+        {
+            Disconnect();
+        }
+        public status CurrentStatus
+        {
+            get { return currentStatus; }
+            set { currentStatus = value; }
         }
         public int Length
         {
@@ -56,98 +57,90 @@ namespace Server29._10
         }
         public void ClearBuffer()
         {
-            Array.Clear(this.buffer, 0, this.buffer.Length);            
+            Array.Clear(this.buffer, 0, this.buffer.Length);
             length = 0;
         }
         void MessageReceiver()
         {
-            byte[] localBuffer = new byte[1000];
+            byte[] localBuffer = new byte[MAX_BUFFER_SIZE];
             while (true)
             {
                 try
-                { 
-                    int lenghtNewMessage = stream.Read(localBuffer, 0, 1000);
+                {
+                    int lenghtNewMessage = stream.Read(localBuffer, 0, MAX_BUFFER_SIZE);
                     if (lenghtNewMessage == 0)
                     {
-                        // закрыть сокет, написать предупреждение
+                        currentStatus = status.error;                        
                         stream.Close();
-                        return;
-                    }
-                    else
+                        break;
+                    }                    
+                    lock (buffer)
                     {
-                        lock (buffer)
-                        {
-                            Array.Copy(localBuffer, 0, buffer, 0, lenghtNewMessage);
-                            length = lenghtNewMessage;            
-                           
-                        }
+                        Array.Copy(localBuffer, 0, buffer, 0, lenghtNewMessage);
+                        length = lenghtNewMessage;
                     }
+                    
                 }
-                catch (Exception)
+                catch (ThreadAbortException)
+                {
+                    break;
+                }
+                catch (Exception ex)
                 {
                     currentStatus = status.error;
-                    //throw new SocketException();
+                    return;
                 }
-              
                 if (EventHandlersListForClientCommand != null)
-                { 
-                    EventHandlersListForClientCommand();                    
+                {
+                    EventHandlersListForClientCommand();
                 }
             }
         }
-
-        public string ReceiveMessage()
+        public bool IsConnected()
         {
-            lock(buffer)
+            if (currentStatus == status.on)
+                return true;
+            return false;
+        }
+        protected string ReceiveMessage()
+        {
+            lock (buffer)
             {
-                string str = ConvertToString(buffer);
+                string str;
+                lock (buffer)
+                {
+                    str = System.Text.Encoding.Unicode.GetString(buffer, 0, length);
+                }
                 ClearBuffer();
                 return str;
             }
         }
-
-        public string DataFromBuffer()
-        {            
-            return ConvertToString(buffer);
-        }
-
-              
-        private byte[] ConvertToArrayOfByte(string str)
-        {
-            byte[] bytes = Encoding.Unicode.GetBytes(str);
-            return bytes;
-        }
-        private string ConvertToString(byte[] bytes)
-        {
-            string str = System.Text.Encoding.Unicode.GetString(bytes, 0, length);
-            return str;
-        }
-
         public bool Send(string data)
         {
+            if (!IsConnected())
+                return false;
             if (data.Length != 0)
             {
+                byte[] bytes = Encoding.Unicode.GetBytes(data);
                 try
                 {
-                    byte[] bytes = ConvertToArrayOfByte(data);
-                     
                     stream.Write(bytes, 0, bytes.Length);
                     stream.Flush();
                 }
                 catch (Exception)
                 {
-                    currentStatus = status.error;                                    
+                    currentStatus = status.error;
                     return false;
                 }
-               
             }
-            //Console.WriteLine("Уровень 3 " + DateTime.Now);
-            //Console.WriteLine(DateTime.Now);
             return true;
         }
         public void Disconnect()
         {
-            this.tcp.Close();
+            if (!IsConnected())
+                return;
+            tcp.Close();
+            stream = null;
             currentStatus = status.off;
         }
     }
