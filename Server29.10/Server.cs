@@ -79,7 +79,6 @@ namespace Server29._10
                                 if (flag)
                                 {
                                     answer = new Response("ok", "welcome, " + command.Name);
-                                    //listOfPlayersAndTheirNickname[client.ID] = command.Name;
                                     listOfPlayersAndTheirNickname.Add(client.ID, command.Name);
                                     dataOfThisGame.AddNewPlayer(command.Name);
 
@@ -225,8 +224,6 @@ namespace Server29._10
                 item.Value.SendNewCommand(tl);
             }
         }
-
-
         public void InitializationServer()
         {
             serverCommand.StartListener();
@@ -261,11 +258,13 @@ namespace Server29._10
         }
         public void AddNewClientCommand()
         {
-            // сделать проверку
             ClientCommand cl = serverCommand.AcceptClientCommand();
-            clients.Add(cl.ID, cl);
-            listOfCmd.Add(new ListOfCommands(cl));
-            clients.Last().Value.EventHandlersListForServer += new ClientCommand.ClientCommandActionEventHandlerForServer(UpdateQueueOfCommands);
+            if (cl != null)
+            {
+                clients.Add(cl.ID, cl);
+                listOfCmd.Add(new ListOfCommands(cl));
+                clients.Last().Value.EventHandlersListForServer += new ClientCommand.ClientCommandActionEventHandlerForServer(UpdateQueueOfCommands);
+            }
         }
     }
 }
