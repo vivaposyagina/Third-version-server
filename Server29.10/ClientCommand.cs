@@ -17,7 +17,6 @@ namespace Server29._10
         public delegate void ClientCommandActionEventHandlerForServer(ClientCommand client);
         Queue<BaseCommand> commands;
         StringBuilder StringBufferForCommands;
-        StringBuilder SendBuffer;
         private int counterOfSentCommand = 0;
         private int counterOfReceivedCommand = 0;
         public event ClientCommandActionEventHandlerForServer EventHandlersListForServer;
@@ -36,7 +35,6 @@ namespace Server29._10
             id = nextID;
             nextID++;
             StringBufferForCommands = new StringBuilder();
-            SendBuffer = new StringBuilder();
             commands = new Queue<BaseCommand>();            
             counterOfReceivedCommand = 0;
             counterOfSentCommand = 0;
@@ -62,7 +60,10 @@ namespace Server29._10
                 size = (int)StringBufferForCommands[1];
                 if (size <= StringBufferForCommands.Length - 2)
                 {
-                    commands.Enqueue(BaseCommand.Deserialize(id, StringBufferForCommands.ToString(2, size)));
+                    lock (commands)
+                    {
+                        commands.Enqueue(BaseCommand.Deserialize(id, StringBufferForCommands.ToString(2, size)));
+                    }
                     counterOfReceivedCommand++;
                     if (EventHandlersListForServer != null)
                     {
@@ -80,27 +81,36 @@ namespace Server29._10
         public Queue<BaseCommand> ReceiveLastCommands()
         {
             Queue<BaseCommand> queue = new Queue<BaseCommand>();
-            if (commands.Count > 0)
+            lock (commands)
             {
-                while (commands.Count > 0)
+                if (commands.Count > 0)
                 {
-                    queue.Enqueue(commands.Dequeue());
+                    while (commands.Count > 0)
+                    {
+                        queue.Enqueue(commands.Dequeue());
+                    }
+                    return queue;
                 }
-                return queue;
             }
             return null;
         }
                 
         public bool SendNewCommand(BaseCommand newCommand)
         {
-            SendBuffer.Clear();
             string newXmlMessage = newCommand.Serialize();
+            if (newXmlMessage.Length == 0)
+                return false;
+            StringBuilder SendBuffer = new StringBuilder(newXmlMessage.Length + 2);
             SendBuffer.Append((char)newCommand.ID);
             SendBuffer.Append((char)newXmlMessage.Length);
             SendBuffer.Append(newXmlMessage);
             counterOfSentCommand++;
-            //Console.WriteLine("Уровень 2");
-            return Send(SendBuffer.ToString());        
+            if (!Send(SendBuffer.ToString()))
+            {
+                return false;
+            }
+            counterOfSentCommand++;
+            return true;       
         }
     }
 }

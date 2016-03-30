@@ -49,7 +49,7 @@ namespace Server29._10
             playersAndCoords = new List<VisiblePlayers.Player>();
             mapObjects = new List<VisibleObjects.MapObject>();
             rand = new Random();
-            timeOfEndingPhaseWaiting = DateTime.Now.AddSeconds(120);
+            timeOfEndingPhaseWaiting = DateTime.Now.AddSeconds(60);
             timeOfEndingPhaseGame = DateTime.Now.AddSeconds(600);
             timeOfEndingPhaseResult = DateTime.Now.AddSeconds(120);
             ReadLabyrinth("labyrinth1.txt");

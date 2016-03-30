@@ -70,8 +70,7 @@ namespace Server29._10
                     int lenghtNewMessage = stream.Read(localBuffer, 0, MAX_BUFFER_SIZE);
                     if (lenghtNewMessage == 0)
                     {
-                        currentStatus = status.error;                        
-                        stream.Close();
+                        currentStatus = status.error;
                         break;
                     }                    
                     lock (buffer)
