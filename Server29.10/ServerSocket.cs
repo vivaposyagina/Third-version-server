@@ -41,8 +41,11 @@ namespace Server29._10
                     try
                     {
                         TcpClient tcp = listener.AcceptTcpClient();
-                        tcp.NoDelay = true;                   
-                        clients.Enqueue(tcp);                        
+                        tcp.NoDelay = true;
+                        lock (clients)
+                        {
+                            clients.Enqueue(tcp);
+                        }
                         if (EventHandlerListForServer != null) EventHandlerListForServer();
                     }
                     catch (Exception ex)
@@ -61,7 +64,8 @@ namespace Server29._10
         {
             isServerRunning = false;
             listener.Stop();
-            //TCPClientAccepter.Abort();
+            TCPClientAccepter.Abort();
+            TCPClientAccepter.Join();
         }
         public TcpClient AcceptTcpClient()
         {
