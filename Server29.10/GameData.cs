@@ -31,7 +31,7 @@ namespace Server29._10
         DateTime timeOfEndingPhaseGame;
         DateTime timeOfEndingPhaseResult;
         public phase phaseOfGame;
-        Dictionary<string, Player> players; 
+        Dictionary<string, Player> players;
         List<VisiblePlayers.Player> playersAndCoords;
         List<VisibleObjects.MapObject> mapObjects;
         private Random rand;
@@ -42,13 +42,13 @@ namespace Server29._10
         List<string> namesOfFileLabyrinths;
         public bool successfulFinish = false;
         public GameData()
-        {   
+        {
             namesOfFileLabyrinths = new List<string>();
             namesOfFileLabyrinths.Add("labyrinth1.txt");
-            players = new Dictionary<string, Player>();           
+            players = new Dictionary<string, Player>();
             playersAndCoords = new List<VisiblePlayers.Player>();
             mapObjects = new List<VisibleObjects.MapObject>();
-            rand = new Random();         
+            rand = new Random();
             timeOfEndingPhaseWaiting = DateTime.Now.AddSeconds(60);
             timeOfEndingPhaseGame = DateTime.Now.AddSeconds(120);
             timeOfEndingPhaseWaiting = DateTime.Now.AddSeconds(40);
@@ -115,7 +115,7 @@ namespace Server29._10
             get { return timeOfEndingPhaseResult; }
             set { timeOfEndingPhaseResult = value; }
         }
-        
+
         public PlayerList FormCommandOfPlayersList()
         {
             List<PlayerList.Player> playersAndColors = new List<PlayerList.Player>();
@@ -132,14 +132,18 @@ namespace Server29._10
                 return new TimeLeft(timeOfEndingPhaseWaiting - DateTime.Now);
             else if (phaseOfGame == phase.game)
                 return new TimeLeft(timeOfEndingPhaseGame - DateTime.Now);
-            else 
+            else
                 return new TimeLeft(timeOfEndingPhaseResult - DateTime.Now);
         }
 
         public PlayerCoords FormCommandOfPlayerCoords(string name)
         {
-            Player pl = players[name];
-            return new PlayerCoords(pl.col, pl.row);
+            if (players.ContainsKey(name))
+            {
+                Player pl = players[name];
+                return new PlayerCoords(pl.col, pl.row);
+            }
+            return null;
         }
 
         public void ReadLabyrinth(string newString)
@@ -151,7 +155,7 @@ namespace Server29._10
             for (int i = 0; i < sizeH; i++)
             {
                 newString = read.ReadLine();
-                for(int j = 0; j < sizeW; j++)
+                for (int j = 0; j < sizeW; j++)
                 {
                     labyrinth[i, j] = Convert.ToInt32(newString[j]) - Convert.ToInt32('0');
                     if (labyrinth[i, j] == 3)
@@ -160,7 +164,7 @@ namespace Server29._10
                         coordExitRow = j;
                     }
                 }
-            }            
+            }
         }
 
         public Tuple<int, int> GetSizeMaps()
@@ -169,7 +173,7 @@ namespace Server29._10
         }
 
         public MapSize FormCommandOfMapSize()
-        {            
+        {
             return new MapSize(GetSizeMaps().Item1, GetSizeMaps().Item2);
         }
 
@@ -179,16 +183,16 @@ namespace Server29._10
             List<VisiblePlayers.Player> list = new List<VisiblePlayers.Player>();
             foreach (var kvp in players)
             {
-                if ((pl.col + 5 > kvp.Value.col) && 
-                   (pl.col - 5 < kvp.Value.col) && 
+                if ((pl.col + 5 > kvp.Value.col) &&
+                   (pl.col - 5 < kvp.Value.col) &&
                    (pl.row + 5 > kvp.Value.row) &&
-                   (pl.row - 5 < kvp.Value.row) && 
+                   (pl.row - 5 < kvp.Value.row) &&
                    (kvp.Value != pl))
-                { 
+                {
                     list.Add(new VisiblePlayers.Player(kvp.Value.name, kvp.Value.col, kvp.Value.row));
-                }      
-            }   
-            return new VisiblePlayers(list);  
+                }
+            }
+            return new VisiblePlayers(list);
         }
 
         public VisibleObjects FormCommandOfVisibleObjects(string name)
@@ -215,27 +219,27 @@ namespace Server29._10
         {
             int result = -1;
             Player pl = players[name];
-            
+
             if (pl.row == coordExitRow && pl.col == coordExitCol)
-            { 
+            {
                 result = 1;
             }
-            
+
             return new GameOver(result);
         }
 
         public void StartGame()
         {
-            phaseOfGame = phase.game;            
+            phaseOfGame = phase.game;
         }
         public void FinishGame()
         {
             phaseOfGame = phase.result;
-        }    
+        }
 
         public void AddNewPlayer(string name)
         {
-            Color cl = Color.FromArgb(rand.Next(0, 255), rand.Next(0, 255), rand.Next(0, 255));            
+            Color cl = Color.FromArgb(rand.Next(0, 255), rand.Next(0, 255), rand.Next(0, 255));
             int coordRow = 0, coordCol = 0;
 
             while (labyrinth[coordCol, coordRow] == 1)
@@ -249,7 +253,7 @@ namespace Server29._10
                         coordRow = 0;
                         coordCol = 0;
                     }
-                } 
+                }
             }
             labyrinth[coordCol, coordRow] = 2;
             players.Add(name, new Player(name, coordCol, coordRow, cl));

@@ -11,152 +11,161 @@ namespace Server29._10
 {
     class Server
     {
+        private class ListOfCommands
+        {
+            ClientCommand client;
+            public Queue<BaseCommand> queueOfCommands;
+
+            public ListOfCommands(ClientCommand cl)
+            {
+                client = cl;
+                queueOfCommands = new Queue<BaseCommand>();
+            }
+
+            public void AddNewCommand(BaseCommand cmd)
+            {
+                queueOfCommands.Enqueue(cmd);
+            }
+        }
         GameData dataOfThisGame;
         ServerCommand serverCommand;
         Dictionary<int, ClientCommand> clients;
         Dictionary<int, string> listOfPlayersAndTheirNickname;
-        Queue<BaseCommand> queueOfCommands;
+        List<ListOfCommands> listOfCmd;
         public status currentStatus = status.off;
         Thread workerThread;
         public Server()
         {
             serverCommand = new ServerCommand();
-            serverCommand.EventHandlerListForServer += new ServerSocket.TcpClientActionEventHandler(AddNewClientCommand);            
+            serverCommand.EventHandlerListForServer += new ServerSocket.TcpClientActionEventHandler(AddNewClientCommand);
             clients = new Dictionary<int, ClientCommand>();
             listOfPlayersAndTheirNickname = new Dictionary<int, string>();
             workerThread = new Thread(new ThreadStart(WorkerThread));
-            queueOfCommands = new Queue<BaseCommand>();
+            listOfCmd = new List<ListOfCommands>();
         }
 
         public void Process(ClientCommand client)
         {
-            while (queueOfCommands.Count > 0)
+            foreach (var it in clients)
             {
-                BaseCommand bcmd = queueOfCommands.Dequeue();
-                switch (bcmd.ID)
+                if (it.Value == client)
                 {
-                    case 2:
-                        Intro command = bcmd as Intro;
-                        Response answer = null;
-                        if (dataOfThisGame.phaseOfGame == phase.game || dataOfThisGame.phaseOfGame == phase.result)
+                    while (listOfCmd[it.Key - 1].queueOfCommands.Count > 0)
+                    {
+                        BaseCommand bcmd = listOfCmd[it.Key - 1].queueOfCommands.Dequeue();
+                        switch (bcmd.ID)
                         {
-                            answer = new Response("notok", "Game has already start");
-                            client.SendNewCommand(answer as BaseCommand);
-                            break;
-                        }
-                        bool flag = true;
-
-                        foreach (KeyValuePair<int, string> player in listOfPlayersAndTheirNickname)
-                        {
-                            if (player.Value == command.Name)
-                            {
-                                answer = new Response("notok", "Player with this nickname already exists");
-                                client.SendNewCommand(answer as BaseCommand);
-                                flag = false;
-                                break;
-                            }
-                        }
-                        if (flag)
-                        {
-                            answer = new Response("ok", "welcome, " + command.Name);
-                            listOfPlayersAndTheirNickname[client.ID] = command.Name;
-                            //listOfPlayersAndTheirNickname.Add(client.ID, command.Name);
-                            dataOfThisGame.AddNewPlayer(command.Name);
-
-                            client.SendNewCommand(answer as BaseCommand);
-                            client.SendNewCommand(dataOfThisGame.FormCommandOfTimeLeft() as BaseCommand);
-
-                            foreach (var item in clients)
-                            {
-                                item.Value.SendNewCommand(dataOfThisGame.FormCommandOfPlayersList() as BaseCommand);
-                            }
-                        }
-
-                        break;
-                    case 4:
-                        Chat messageCommand = bcmd as Chat;
-                        for (int i = 1; i < ClientCommand.MaxID; i++)
-                        {
-                            if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
-                            {
-                                clients[i].SendNewCommand(messageCommand as BaseCommand);
-                            }
-                        }
-                        break;
-                    case 10:
-                        PlayerMove movement = bcmd as PlayerMove;
-                        for (int i = 1; i < ClientCommand.MaxID; i++)
-                        {
-                            if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on && client == clients[i])
-                            {
-                                dataOfThisGame.PlayerMoved(movement.Direction, listOfPlayersAndTheirNickname[i]);
-                            }
-                        }
-
-                        for (int i = 1; i <= ClientCommand.MaxID; i++)
-                        {
-                            if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
-                            {
-                                if (client == clients[i])
+                            case 2:
+                                Intro command = bcmd as Intro;
+                                Response answer = null;
+                                if (dataOfThisGame.phaseOfGame == phase.game || dataOfThisGame.phaseOfGame == phase.result)
                                 {
-                                    client.SendNewCommand(dataOfThisGame.FormCommandOfPlayerCoords(listOfPlayersAndTheirNickname[i]) as BaseCommand);
-                                    client.SendNewCommand(dataOfThisGame.FormCommandOfVisibleObjects(listOfPlayersAndTheirNickname[i]) as BaseCommand);
+                                    answer = new Response("notok", "Game has already start");
+                                    client.SendNewCommand(answer as BaseCommand);
+                                    break;
                                 }
-                                clients[i].SendNewCommand(dataOfThisGame.FormCommandOfVisiblePlayers(listOfPlayersAndTheirNickname[i]) as BaseCommand);
-                            }
+                                bool flag = true;
 
-                        }
-                        break;
-                    case 12:
-                        PlayerDisconnect disconnectCommand = bcmd as PlayerDisconnect;
+                                foreach (KeyValuePair<int, string> player in listOfPlayersAndTheirNickname)
+                                {
+                                    if (player.Value == command.Name)
+                                    {
+                                        answer = new Response("notok", "Player with this nickname already exists");
+                                        client.SendNewCommand(answer as BaseCommand);
+                                        flag = false;
+                                        break;
+                                    }
+                                }
+                                if (flag)
+                                {
+                                    answer = new Response("ok", "welcome, " + command.Name);
+                                    //listOfPlayersAndTheirNickname[client.ID] = command.Name;
+                                    listOfPlayersAndTheirNickname.Add(client.ID, command.Name);
+                                    dataOfThisGame.AddNewPlayer(command.Name);
 
-                        for (int j = 1; j <= ClientCommand.MaxID; j++)
-                        {
-                            if (clients.ContainsKey(j) && clients[j] == client)
-                            {
-                                clients[j].Disconnect();
-                                clients.Remove(j);
-                                Console.WriteLine("Клиент " + listOfPlayersAndTheirNickname[j] + " отключился");
-                                dataOfThisGame.DeletePlayer(listOfPlayersAndTheirNickname[j]);
-                                listOfPlayersAndTheirNickname.Remove(j);
-                            }
+                                    client.SendNewCommand(answer as BaseCommand);
+                                    client.SendNewCommand(dataOfThisGame.FormCommandOfTimeLeft() as BaseCommand);
+
+                                    foreach (var item in clients)
+                                    {
+                                        item.Value.SendNewCommand(dataOfThisGame.FormCommandOfPlayersList() as BaseCommand);
+                                    }
+                                }
+
+                                break;
+                            case 4:
+                                Chat messageCommand = bcmd as Chat;
+                                foreach (var item in clients)
+                                {
+                                    item.Value.SendNewCommand(messageCommand as BaseCommand);
+                                }
+                                break;
+                            case 10:
+                                PlayerMove movement = bcmd as PlayerMove;
+                                foreach (var item in clients)
+                                {
+                                    if (client == item.Value)
+                                    {
+                                        dataOfThisGame.PlayerMoved(movement.Direction, listOfPlayersAndTheirNickname[item.Key]);
+                                        item.Value.SendNewCommand(dataOfThisGame.FormCommandOfPlayerCoords(listOfPlayersAndTheirNickname[item.Key]) as BaseCommand);
+                                        item.Value.SendNewCommand(dataOfThisGame.FormCommandOfVisibleObjects(listOfPlayersAndTheirNickname[item.Key]) as BaseCommand);
+                                    }
+                                    item.Value.SendNewCommand(dataOfThisGame.FormCommandOfVisiblePlayers(listOfPlayersAndTheirNickname[item.Key]) as BaseCommand);
+                                }
+                                break;
+                            case 12:
+                                PlayerDisconnect disconnectCommand = bcmd as PlayerDisconnect;
+
+                                foreach (var item in clients)
+                                {
+                                    if (client == item.Value)
+                                    {
+                                        item.Value.Disconnect();
+                                        clients.Remove(item.Key);
+                                        Console.WriteLine("Клиент " + listOfPlayersAndTheirNickname[item.Key] + " отключился");
+                                        dataOfThisGame.DeletePlayer(listOfPlayersAndTheirNickname[item.Key]);
+                                        listOfPlayersAndTheirNickname.Remove(item.Key);
+                                    }
+                                }
+                                client.Disconnect();
+                                foreach (var item in clients)
+                                {
+                                    item.Value.SendNewCommand(dataOfThisGame.FormCommandOfPlayersList() as BaseCommand);
+                                }
+                                break;
+                            default:
+                                Console.WriteLine("Неизвестная команда");
+                                break;
                         }
-                        client.Disconnect();
-                        for (int q = 1; q <= ClientCommand.MaxID; q++)
-                        {
-                            if (clients.ContainsKey(q))
-                            {
-                                clients[q].SendNewCommand(dataOfThisGame.FormCommandOfPlayersList() as BaseCommand);
-                            }
-                        }
-                        break;
-                    default:
-                        Console.WriteLine("Неизвестная команда");
-                        break;
+                    }
                 }
             }
         }
         public void CheckClients()
         {
-            for (int i = 1; i < ClientCommand.MaxID; i++)
+            Queue<int> key = new Queue<int>();
+            int x;
+            foreach (var item in clients)
             {
-                if (clients.ContainsKey(i) && listOfPlayersAndTheirNickname.ContainsKey(i) && clients[i].CurrentStatus == status.error)
+                if (item.Value.CurrentStatus == status.error)
                 {
-                    clients[i].Disconnect();
-                    dataOfThisGame.DeletePlayer(listOfPlayersAndTheirNickname[i]);
-                    clients.Remove(i);
-                    Console.WriteLine("Клиент " + listOfPlayersAndTheirNickname[i] + " перестал отвечать");
-                    listOfPlayersAndTheirNickname.Remove(i);
-                    for (int j = 1; j <= ClientCommand.MaxID; j++)
+                    item.Value.Disconnect();
+                    key.Enqueue(item.Key);
+                    dataOfThisGame.DeletePlayer(listOfPlayersAndTheirNickname[item.Key]);
+                    Console.WriteLine("Клиент " + listOfPlayersAndTheirNickname[item.Key] + " перестал отвечать");
+                    listOfPlayersAndTheirNickname.Remove(item.Key);
+                    foreach (var flag in clients)
                     {
-                        if (clients.ContainsKey(j))
-                        {
-                            clients[j].SendNewCommand(dataOfThisGame.FormCommandOfPlayersList() as BaseCommand);
-                        }
+                        flag.Value.SendNewCommand(dataOfThisGame.FormCommandOfPlayersList() as BaseCommand);
                     }
                 }
                 else
-                    Process(clients[i]);
+                    Process(item.Value);
+            }
+            while (key.Count > 0)
+            {
+                x = key.Dequeue();
+                clients.Remove(x);
             }
         }
         public void WorkerThread()
@@ -180,32 +189,25 @@ namespace Server29._10
                 if (DateTime.Now < dataOfThisGame.TimeOfEndingPhaseGame && DateTime.Now > dataOfThisGame.TimeOfEndingThisWaiting && !WhetherDataIsSentToStartGame)
                 {
                     dataOfThisGame.StartGame();
-                    for (int i = 1; i <= ClientCommand.MaxID; i++)
+                    foreach (var item in clients)
                     {
-                        if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
-                        {
-                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfMapSize() as BaseCommand);
-                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfPlayerCoords(listOfPlayersAndTheirNickname[i]) as BaseCommand);                         
-                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfVisibleObjects(listOfPlayersAndTheirNickname[i]) as BaseCommand);                            
-                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfVisiblePlayers(listOfPlayersAndTheirNickname[i]) as BaseCommand);
-                           
-                        }
+                        item.Value.SendNewCommand(dataOfThisGame.FormCommandOfMapSize() as BaseCommand);
+                        item.Value.SendNewCommand(dataOfThisGame.FormCommandOfPlayerCoords(listOfPlayersAndTheirNickname[item.Key]) as BaseCommand);
+                        item.Value.SendNewCommand(dataOfThisGame.FormCommandOfVisibleObjects(listOfPlayersAndTheirNickname[item.Key]) as BaseCommand);
+                        item.Value.SendNewCommand(dataOfThisGame.FormCommandOfVisiblePlayers(listOfPlayersAndTheirNickname[item.Key]) as BaseCommand);
                     }
                     WhetherDataIsSentToStartGame = true;
                 }
-               
-                if ((DateTime.Now > dataOfThisGame.TimeOfEndingPhaseGame 
+
+                if ((DateTime.Now > dataOfThisGame.TimeOfEndingPhaseGame
                     && DateTime.Now < dataOfThisGame.TimeOfEndingPhaseResult
                     || dataOfThisGame.phaseOfGame == phase.result)
                     && !WhetherDataIsSentToFinishGame)
                 {
                     dataOfThisGame.FinishGame();
-                    for (int i = 1; i < ClientCommand.MaxID; i++)
+                    foreach (var item in clients)
                     {
-                        if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
-                        {
-                            clients[i].SendNewCommand(dataOfThisGame.FormCommandOfGameOver(listOfPlayersAndTheirNickname[i]) as BaseCommand);
-                        }
+                        item.Value.SendNewCommand(dataOfThisGame.FormCommandOfGameOver(listOfPlayersAndTheirNickname[item.Key]) as BaseCommand);
                     }
                     WhetherDataIsSentToFinishGame = true;
                 }
@@ -218,41 +220,43 @@ namespace Server29._10
         public void SendTimeLeft()
         {
             TimeLeft tl = dataOfThisGame.FormCommandOfTimeLeft();
-            for (int i = 1; i < ClientCommand.MaxID; i++)
+            foreach (var item in clients)
             {
-                if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
-                {
-                    clients[i].SendNewCommand(tl);
-                }               
-            } 
+                item.Value.SendNewCommand(tl);
+            }
         }
-        
-     
+
+
         public void InitializationServer()
         {
             serverCommand.StartListener();
-            dataOfThisGame = new GameData();            
+            dataOfThisGame = new GameData();
             currentStatus = status.on;
             workerThread.Start();
         }
         public void FinalizationWorkingServer()
         {
             serverCommand.StopListener();
-            for (int i = 0; i < ClientCommand.MaxID; i++)
+            foreach (var item in clients)
             {
-                if (clients.ContainsKey(i) && clients[i].CurrentStatus == status.on)
-                {
-                    clients[i].Disconnect();
-                }
+                item.Value.Disconnect();
             }
             currentStatus = status.off;
         }
         public void UpdateQueueOfCommands(ClientCommand client)
         {
             Queue<BaseCommand> que = client.ReceiveLastCommands();
-            while (que.Count > 0)
+            
+            foreach(var item in clients)
             {
-                queueOfCommands.Enqueue(que.Dequeue());
+                if (item.Value == client)
+                {
+                    while (que.Count > 0)
+                    {
+                        listOfCmd[item.Key - 1].AddNewCommand(que.Dequeue());
+                    }
+                }
+
             }
         }
         public void AddNewClientCommand()
@@ -260,7 +264,8 @@ namespace Server29._10
             // сделать проверку
             ClientCommand cl = serverCommand.AcceptClientCommand();
             clients.Add(cl.ID, cl);
+            listOfCmd.Add(new ListOfCommands(cl));
             clients.Last().Value.EventHandlersListForServer += new ClientCommand.ClientCommandActionEventHandlerForServer(UpdateQueueOfCommands);
-        } 
+        }
     }
 }
