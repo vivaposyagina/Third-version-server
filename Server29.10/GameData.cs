@@ -62,32 +62,32 @@ namespace Server29._10
             TimeSpan time = DateTime.Now - pl.timeOfLastMovement;
             if (time.Milliseconds > 350)
             {
-                if (movement == direction.S && labyrinth[pl.col, pl.row + 1] == 0)
+                if (movement == direction.S && labyrinth[pl.row, pl.col + 1] == 0)
                 {
-                    labyrinth[pl.col, pl.row] = 0;
-                    labyrinth[pl.col, pl.row + 1] += 2;
-                    pl.row += 1;
+                    labyrinth[pl.row, pl.col] = 0;
+                    labyrinth[pl.row, pl.col + 1] += 2;
+                    pl.col += 1;
                     pl.timeOfLastMovement = DateTime.Now;
                 }
-                if (movement == direction.N && labyrinth[pl.col, pl.row - 1] == 0)
+                if (movement == direction.N && labyrinth[pl.row, pl.col - 1] == 0)
                 {
-                    labyrinth[pl.col, pl.row] = 0;
-                    labyrinth[pl.col, pl.row - 1] += 2;
-                    pl.row -= 1;
-                    pl.timeOfLastMovement = DateTime.Now;
-                }
-                if (movement == direction.W && labyrinth[pl.col - 1, pl.row] == 0)
-                {
-                    labyrinth[pl.col, pl.row] = 0;
-                    labyrinth[pl.col - 1, pl.row] += 2;
+                    labyrinth[pl.row, pl.col] = 0;
+                    labyrinth[pl.row, pl.col - 1] += 2;
                     pl.col -= 1;
                     pl.timeOfLastMovement = DateTime.Now;
                 }
-                if (movement == direction.E && labyrinth[pl.col + 1, pl.row] == 0)
+                if (movement == direction.W && labyrinth[pl.row - 1, pl.col] == 0)
                 {
-                    labyrinth[pl.col, pl.row] = 0;
-                    labyrinth[pl.col + 1, pl.row] += 2;
-                    pl.col += 1;
+                    labyrinth[pl.row, pl.col] = 0;
+                    labyrinth[pl.row - 1, pl.col] += 2;
+                    pl.row -= 1;
+                    pl.timeOfLastMovement = DateTime.Now;
+                }
+                if (movement == direction.E && labyrinth[pl.row + 1, pl.col] == 0)
+                {
+                    labyrinth[pl.row, pl.col] = 0;
+                    labyrinth[pl.row + 1, pl.col] += 2;
+                    pl.row += 1;
                     pl.timeOfLastMovement = DateTime.Now;
                 }
                 if (pl.row == coordExitRow && pl.col == coordExitCol)
@@ -139,7 +139,7 @@ namespace Server29._10
             if (players.ContainsKey(name))
             {
                 Player pl = players[name];
-                return new PlayerCoords(pl.col, pl.row);
+                return new PlayerCoords(pl.row, pl.col);
             }
             return null;
         }
@@ -158,8 +158,8 @@ namespace Server29._10
                     labyrinth[i, j] = Convert.ToInt32(newString[j]) - Convert.ToInt32('0');
                     if (labyrinth[i, j] == 3)
                     {
-                        coordExitCol = i;
-                        coordExitRow = j;
+                        coordExitCol = j;
+                        coordExitRow = i;
                     }
                 }
             }
@@ -201,9 +201,9 @@ namespace Server29._10
             int ColEnd = Math.Min(sizeW - 1, pl.col + 5);
             int RowStart = Math.Max(0, pl.row - 5);
             int RowEnd = Math.Min(sizeH - 1, pl.row + 5);
-            for (int i = ColStart; i < ColEnd; i++)
+            for (int i = RowStart; i < RowEnd; i++)
             {
-                for (int j = RowStart; j < RowEnd; j++)
+                for (int j = ColStart; j < ColEnd; j++)
                 {
                     if (labyrinth[i, j] == 1)
                     {
@@ -254,7 +254,7 @@ namespace Server29._10
                 }
             }
             labyrinth[coordCol, coordRow] = 2;
-            players.Add(name, new Player(name, coordCol, coordRow, cl));
+            players.Add(name, new Player(name, coordRow, coordCol, cl));
         }
         public void DeletePlayer(string name)
         {
